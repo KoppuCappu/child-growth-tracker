@@ -13,7 +13,9 @@ import { LoginScreen } from '@/components/LoginScreen'
 import './App.css'
 
 function App() {
-  const { user, childInfo, loading, logout, completeSetup } = useAuth()
+  const { user, loading, logout } = useAuth()
+  const [setupCompleted, setSetupCompleted] = useState(false)
+  const [childInfo, setChildInfo] = useState(null)
   const [growthData, setGrowthData] = useState([])
   const [vaccinations, setVaccinations] = useState([])
   const [diaryEntries, setDiaryEntries] = useState([])
@@ -34,20 +36,29 @@ function App() {
     content: ''
   })
   const [settingsData, setSettingsData] = useState({
-    childName: childInfo?.childName || '',
-    birthDate: childInfo?.birthDate || '',
-    gender: childInfo?.gender || '',
-    birthHeight: childInfo?.birthHeight || '',
-    birthWeight: childInfo?.birthWeight || ''
+    childName: '',
+    birthDate: '',
+    gender: '',
+    birthHeight: '',
+    birthWeight: ''
   })
   const [settingsError, setSettingsError] = useState('')
   const [settingsSaved, setSettingsSaved] = useState(false)
 
-  // ローカルストレージからデータを読み込み
+  // ページ読み込み時にローカルストレージから復元
   useEffect(() => {
+    const savedSetupCompleted = localStorage.getItem('setupCompleted')
+    const savedChildInfo = localStorage.getItem('childInfo')
     const savedGrowthData = localStorage.getItem('growthData')
     const savedVaccinations = localStorage.getItem('vaccinations')
     const savedDiaryEntries = localStorage.getItem('diaryEntries')
+    
+    if (savedSetupCompleted === 'true' && savedChildInfo) {
+      const childData = JSON.parse(savedChildInfo)
+      setSetupCompleted(true)
+      setChildInfo(childData)
+      setSettingsData(childData)
+    }
     
     if (savedGrowthData) {
       setGrowthData(JSON.parse(savedGrowthData))
@@ -59,19 +70,6 @@ function App() {
       setDiaryEntries(JSON.parse(savedDiaryEntries))
     }
   }, [])
-
-  // 設定データを更新
-  useEffect(() => {
-    if (childInfo) {
-      setSettingsData({
-        childName: childInfo.childName || '',
-        birthDate: childInfo.birthDate || '',
-        gender: childInfo.gender || '',
-        birthHeight: childInfo.birthHeight || '',
-        birthWeight: childInfo.birthWeight || ''
-      })
-    }
-  }, [childInfo])
 
   // データをローカルストレージに保存
   useEffect(() => {
@@ -148,7 +146,10 @@ function App() {
     }
 
     // 設定を保存
-    completeSetup(settingsData)
+    setChildInfo(settingsData)
+    setSetupCompleted(true)
+    localStorage.setItem('childInfo', JSON.stringify(settingsData))
+    localStorage.setItem('setupCompleted', 'true')
     setSettingsSaved(true)
     setTimeout(() => setSettingsSaved(false), 3000)
   }
@@ -184,7 +185,7 @@ function App() {
               <Baby className="h-8 w-8 text-pink-500" />
               <div>
                 <h1 className="text-4xl font-bold text-gray-800">子供の成長記録</h1>
-                <p className="text-gray-600">{settingsData.childName}の成長を記録</p>
+                <p className="text-gray-600">{childInfo?.childName || 'お子様'}の成長を記録</p>
               </div>
               <Heart className="h-8 w-8 text-pink-500" />
             </div>
@@ -207,7 +208,7 @@ function App() {
           <p className="text-gray-600 text-lg">お子様の大切な成長を記録しましょう</p>
         </header>
 
-        <Tabs defaultValue="growth" className="w-full">
+        <Tabs defaultValue={setupCompleted ? "growth" : "settings"} className="w-full">
           <TabsList className="grid w-full grid-cols-5 mb-8">
             <TabsTrigger value="growth" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
