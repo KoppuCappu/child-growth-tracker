@@ -8,23 +8,38 @@ export const LoginScreen = () => {
   const { handleGoogleLogin, GOOGLE_CLIENT_ID } = useAuth()
 
   useEffect(() => {
-    // Googleスクリプトが読み込まれたか確認
-    if (window.google && window.google.accounts && window.google.accounts.id) {
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleLogin
-      })
-
-      // ボタンをレンダリング
-      window.google.accounts.id.renderButton(
-        document.getElementById('google-signin-button'),
-        {
-          theme: 'outline',
-          size: 'large',
-          width: '100%'
+    // Googleスクリプトが読み込まれるまで待つ
+    const checkGoogleLoaded = setInterval(() => {
+      if (window.google && window.google.accounts && window.google.accounts.id) {
+        clearInterval(checkGoogleLoaded)
+        
+        // Client IDが有効か確認
+        if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+          console.error('Google Client ID is not set')
+          return
         }
-      )
-    }
+        
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleLogin
+        })
+
+        // ボタンをレンダリング
+        const button = document.getElementById('google-signin-button')
+        if (button) {
+          window.google.accounts.id.renderButton(
+            button,
+            {
+              theme: 'outline',
+              size: 'large',
+              width: '100%'
+            }
+          )
+        }
+      }
+    }, 100)
+
+    return () => clearInterval(checkGoogleLoaded)
   }, [GOOGLE_CLIENT_ID, handleGoogleLogin])
 
   return (
