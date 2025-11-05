@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group.jsx'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { Calendar, Plus, TrendingUp, Baby, Heart, Syringe, BookOpen, LogOut, Settings } from 'lucide-react'
+import { Calendar, Plus, TrendingUp, Baby, Heart, Syringe, BookOpen, LogOut, Settings, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { LoginScreen } from '@/components/LoginScreen'
 import './App.css'
@@ -23,7 +23,8 @@ function App() {
     date: '',
     height: '',
     weight: '',
-    notes: ''
+    notes: '',
+    photos: []
   })
   const [newVaccination, setNewVaccination] = useState({
     date: '',
@@ -44,6 +45,7 @@ function App() {
   })
   const [settingsError, setSettingsError] = useState('')
   const [settingsSaved, setSettingsSaved] = useState(false)
+  const [selectedPhoto, setSelectedPhoto] = useState(null)
 
   // ページ読み込み時にローカルストレージから復元
   useEffect(() => {
@@ -84,6 +86,30 @@ function App() {
     localStorage.setItem('diaryEntries', JSON.stringify(diaryEntries))
   }, [diaryEntries])
 
+  const handlePhotoUpload = (e) => {
+    const files = Array.from(e.target.files)
+    files.forEach((file) => {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setNewEntry(prev => ({
+          ...prev,
+          photos: [...prev.photos, {
+            id: Date.now() + Math.random(),
+            data: event.target.result
+          }]
+        }))
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const removePhoto = (photoId) => {
+    setNewEntry(prev => ({
+      ...prev,
+      photos: prev.photos.filter(p => p.id !== photoId)
+    }))
+  }
+
   const addGrowthEntry = () => {
     if (newEntry.date && (newEntry.height || newEntry.weight)) {
       const entry = {
@@ -91,10 +117,11 @@ function App() {
         date: newEntry.date,
         height: parseFloat(newEntry.height) || null,
         weight: parseFloat(newEntry.weight) || null,
-        notes: newEntry.notes
+        notes: newEntry.notes,
+        photos: newEntry.photos
       }
       setGrowthData([...growthData, entry].sort((a, b) => new Date(a.date) - new Date(b.date)))
-      setNewEntry({ date: '', height: '', weight: '', notes: '' })
+      setNewEntry({ date: '', height: '', weight: '', notes: '', photos: [] })
     }
   }
 
@@ -285,6 +312,40 @@ function App() {
                       onChange={(e) => setNewEntry({...newEntry, notes: e.target.value})}
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="photos">写真を追加</Label>
+                    <Input
+                      id="photos"
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      multiple
+                      onChange={handlePhotoUpload}
+                      className="mt-2"
+                    />
+                  </div>
+                  {newEntry.photos.length > 0 && (
+                    <div>
+                      <Label>アップロード済みの写真</Label>
+                      <div className="grid grid-cols-3 gap-2 mt-2">
+                        {newEntry.photos.map((photo) => (
+                          <div key={photo.id} className="relative group">
+                            <img
+                              src={photo.data}
+                              alt="Growth photo"
+                              className="w-full h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => setSelectedPhoto(photo)}
+                            />
+                            <button
+                              onClick={() => removePhoto(photo.id)}
+                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <Button onClick={addGrowthEntry} className="w-full">
                     記録を追加
                   </Button>
@@ -314,6 +375,19 @@ function App() {
                         </div>
                         {entry.notes && (
                           <p className="text-sm text-gray-600 mt-2">{entry.notes}</p>
+                        )}
+                        {entry.photos && entry.photos.length > 0 && (
+                          <div className="mt-3 grid grid-cols-3 gap-2">
+                            {entry.photos.map((photo) => (
+                              <img
+                                key={photo.id}
+                                src={photo.data}
+                                alt="Growth photo"
+                                className="w-full h-16 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => setSelectedPhoto(photo)}
+                              />
+                            ))}
+                          </div>
                         )}
                       </div>
                     ))}
@@ -606,6 +680,31 @@ function App() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* 写真拡大表示モーダル */}
+      {selectedPhoto && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={() => setSelectedPhoto(null)}
+        >
+          <div 
+            className="bg-white rounded-lg max-w-2xl max-h-96 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedPhoto(null)}
+              className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <img
+              src={selectedPhoto.data}
+              alt="Growth photo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
